@@ -14,10 +14,7 @@ from googleapiclient.http import MediaIoBaseDownload
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 
-@click.command()
-@click.option('--file-id')
-@click.option('--output-file')
-def main(file_id, output_file):
+def get_credentials(client_secrets_file):
     """Shows basic usage of the Drive v3 API.
     Prints the names and ids of the first 10 files the user has access to.
     """
@@ -34,12 +31,16 @@ def main(file_id, output_file):
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                'credentials.json', SCOPES)
+                client_secrets_file, SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
         with open('token.pickle', 'wb') as token:
             pickle.dump(creds, token)
 
+    return creds
+
+
+def download(file_id, filename, creds):
     service = build('drive', 'v3', credentials=creds)
 
     # download file
@@ -52,9 +53,18 @@ def main(file_id, output_file):
         print("Download %d%%." % int(status.progress() * 100))
 
     # output file
-    if output_file is not None:
-        with open(output_file, 'wb') as fp:
+    if filename is not None:
+        with open(filename, 'wb') as fp:
             fp.write(fh.getvalue())
+
+
+@click.command()
+@click.option('--file-id')
+@click.option('--filename')
+@click.option('--client-secrets-file', default='credentials.json')
+def main(file_id, filename, client_secrets_file):
+    creds = get_credentials(client_secrets_file)
+    download(file_id, filename, creds)
 
 
 if __name__ == '__main__':
